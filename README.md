@@ -323,6 +323,8 @@ From the admin panel:
 
 Commands are encrypted and queued for the vehicle to fetch.
 
+<img width="1920" height="1080" alt="Secure-Fleet-Command-Control-System" src="https://github.com/user-attachments/assets/6ebbfda9-456c-4276-8589-e43d3e7e0139" />
+
 ### 4. Mobile App Usage
 
 1. Launch the Flutter app
