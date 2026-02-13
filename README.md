@@ -549,16 +549,6 @@ This project is licensed under the **MIT License** - see the [LICENSE](LICENSE) 
 
 ---
 
-## 📞 Support
-
-For issues, questions, or contributions:
-
-- 🐛 **Report bugs**: [Open an issue](../../issues)
-- 💬 **Discussions**: [Start a discussion](../../discussions)
-- 📧 **Contact**: Create an issue for general inquiries
-
----
-
 ## 🔮 Roadmap
 
 - Database integration (PostgreSQL/MongoDB)
@@ -571,7 +561,7 @@ For issues, questions, or contributions:
 
 ## 👨‍💻 About the Author
 
-**Manish Gupta** - Autonomous Systems & Robotics Engineer
+**Manish Gupta** - Autonomous Systems & Robotics Engineer 
 
 I specialize in building secure command & control systems for autonomous vehicles, drones, and robotic platforms. This project demonstrates end-to-end encrypted communication, real-time GPS tracking, and multi-platform fleet management.
 
