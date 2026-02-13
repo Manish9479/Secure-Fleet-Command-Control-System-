@@ -7,7 +7,7 @@
 
 A **real-time monitoring and control system** for autonomous vehicle fleets with **end-to-end encrypted command transmission**, GPS tracking, and multi-platform support. Built for secure, scalable, and reliable remote vehicle management.
 
-**Author:** [Manish Gupta](https://github.com/Manish9479)  
+**Author:** [Manish Gupta](https://www.linkedin.com/in/manish-gupta-746b11213/)  
 [![GitHub](https://img.shields.io/badge/GitHub-Manish9479-181717?logo=github)](https://github.com/Manish9479)
 [![LinkedIn](https://img.shields.io/badge/LinkedIn-Manish_Gupta-0077B5?logo=linkedin)](https://www.linkedin.com/in/manish-gupta-746b11213/)
 
