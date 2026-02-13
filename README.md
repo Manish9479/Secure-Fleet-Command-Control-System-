@@ -555,18 +555,13 @@ For issues, questions, or contributions:
 
 ---
 
-## 🔮 Future Enhancements
+## 🔮 Roadmap
 
-- [ ] Database integration (PostgreSQL/MongoDB)
-- [ ] Historical path playback
-- [ ] Geofencing and alerts
-- [ ] Multi-user role management
-- [ ] Telemetry data logging
-- [ ] WebSocket for real-time updates
-- [ ] RSA public key infrastructure
-- [ ] Vehicle health monitoring
-- [ ] Route optimization algorithms
-- [ ] Emergency stop broadcast
+- Database integration (PostgreSQL/MongoDB)
+- WebSocket real-time updates
+- Multi-user authentication
+- Geofencing & alerts
+- Historical playback
 
 ---
 
