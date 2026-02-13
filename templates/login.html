@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="login-container">
+    <div class="header">
+        <h1>Admin Access</h1>
+        <p>Please authenticate to access control controls</p>
+    </div>
+
+    <div class="car-card">
+        <form method="POST" action="/login">
+            {% if error %}
+            <div
+                style="background-color: rgba(239, 68, 68, 0.1); color: #ef4444; padding: 0.75rem; border-radius: 0.5rem; margin-bottom: 1rem; text-align: center;">
+                {{ error }}
+            </div>
+            {% endif %}
+
+            <div class="form-group">
+                <label for="username">Username</label>
+                <input type="text" id="username" name="username" class="form-control" required>
+            </div>
+
+            <div class="form-group">
+                <label for="password">Password</label>
+                <input type="password" id="password" name="password" class="form-control" required>
+            </div>
+
+            <button type="submit" class="btn btn-primary">Authenticate</button>
+        </form>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,264 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="header">
+    <h1>Command Center</h1>
+    <p>Secure control interface with AES-256 Encryption & Live Tracking</p>
+</div>
+
+<div class="car-card" style="margin-bottom: 2rem;">
+    <h3>Master Control Panel</h3>
+    <div style="display: flex; gap: 1rem; align-items: flex-end;">
+        <div class="form-group" style="margin-bottom: 0; flex: 1;">
+            <label>Select Vehicle</label>
+            <select id="main-car-select" class="form-control">
+                <option value="">-- Choose Car --</option>
+            </select>
+        </div>
+        <div class="form-group" style="margin-bottom: 0; flex: 2;">
+            <label>Path to Execute</label>
+            <select id="main-path-input" class="form-control">
+                <option value="">-- Choose Path --</option>
+                <option value="Path-A">Path-A</option>
+                <option value="Path-B">Path-B</option>
+                <option value="Path-Testing-Loop">Path-Testing-Loop</option>
+                <option value="Path-Emergency">Path-Emergency</option>
+                <option value="Path-Tihan-Perimeter">Path-Tihan-Perimeter</option>
+            </select>
+        </div>
+        <div style="flex: 1; display: flex; gap: 0.5rem;">
+            <button class="btn btn-start" onclick="controlCar(null, 'start')">START</button>
+            <button class="btn btn-stop" onclick="controlCar(null, 'stop')">STOP</button>
+        </div>
+    </div>
+</div>
+
+<div id="map"></div>
+
+<div class="car-grid" id="admin-container">
+    <!-- Admin Controls injected here -->
+</div>
+
+<div class="container">
+    <h3>System Logs (Decrypted Server Response)</h3>
+    <div id="system-logs" class="log-box">
+        Waiting for commands...
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Initialize Map centered on TiHAN IITH with Satellite View
+    var map = L.map('map').setView([17.6018, 78.1268], 18);
+    
+    // Satellite imagery from Esri World Imagery
+    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+        maxZoom: 19,
+        attribution: '© Esri, Maxar, Earthstar Geographics'
+    }).addTo(map);
+
+    var markers = {};
+
+    function log(message) {
+        const box = document.getElementById('system-logs');
+        const line = document.createElement('div');
+        line.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+        box.insertBefore(line, box.firstChild);
+    }
+
+    function controlCar(acsId, action) {
+        // Handle Master Control Panel logic
+        if (!acsId) {
+            acsId = document.getElementById('main-car-select').value;
+        }
+
+        if (!acsId) {
+            alert("Please select a car first.");
+            return;
+        }
+
+        let path = 'default';
+        // Try specific input first, then main input
+        const specificInput = document.getElementById(`path-${acsId}`);
+        const mainInput = document.getElementById('main-path-input');
+
+        if (specificInput && specificInput.value) {
+            path = specificInput.value;
+        } else if (mainInput && mainInput.value) {
+            path = mainInput.value;
+        }
+
+        log(`Sending ${action.toUpperCase()} command for ${acsId} path: ${path}...`);
+
+        fetch('/api/control', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ acs_id: acsId, action: action, path: path })
+        })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    log(`Success! Encrypted Payload: ${data.encrypted_payload.substring(0, 20)}...`);
+                    log(`Decrypted Execution: ${data.decrypted_log.raw_command}`);
+                } else {
+                    log(`Error: ${data.message}`);
+                    if (data.message === 'Unauthorized') window.location.href = '/login';
+                }
+                updateAdmin();
+            })
+            .catch(err => log(`Network Error: ${err}`));
+    }
+
+    function updateAdmin() {
+        fetch('/api/data')
+            .then(response => response.json())
+            .then(data => {
+                const container = document.getElementById('admin-container');
+                const selector = document.getElementById('main-car-select');
+
+                // Populate Selector if empty (Master Panel)
+                if (selector && selector.options.length <= 1) {
+                    Object.keys(data).forEach(carId => {
+                        let exists = false;
+                        for (let i = 0; i < selector.options.length; i++) {
+                            if (selector.options[i].value == carId) exists = true;
+                        }
+                        if (!exists) {
+                            const opt = document.createElement('option');
+                            opt.value = carId;
+                            opt.textContent = carId;
+                            selector.appendChild(opt);
+                        }
+                    });
+                }
+
+                // Map Updates - Show ONLY Running Vehicles
+                Object.keys(data).forEach(carId => {
+                    const car = data[carId];
+                    
+                    // Only show running vehicles on map
+                    if (car.status === 'Running') {
+                        if (markers[carId]) {
+                            markers[carId].setLatLng([car.lat, car.lon]);
+                            markers[carId].setPopupContent(`<b>${carId}</b><br>Status: ${car.status}<br>Path: ${car.path}`);
+                            if (!map.hasLayer(markers[carId])) {
+                                markers[carId].addTo(map);
+                            }
+                        } else {
+                            // Create new marker for running vehicle
+                            markers[carId] = L.marker([car.lat, car.lon]).addTo(map)
+                                .bindPopup(`<b>${carId}</b><br>Status: ${car.status}<br>Path: ${car.path}`)
+                                .bindTooltip(carId, {
+                                    permanent: true,
+                                    direction: 'top',
+                                    className: 'transparent-label',
+                                    offset: [0, -30]
+                                });
+                        }
+                    } else {
+                        // Remove stopped vehicles from map
+                        if (markers[carId] && map.hasLayer(markers[carId])) {
+                            map.removeLayer(markers[carId]);
+                        }
+                    }
+                });
+
+                // UI Updates for Cards - Show ONLY Running Vehicles
+                const runningCars = Object.keys(data).filter(carId => data[carId].status === 'Running');
+                
+                if (container.children.length === 0) {
+                    runningCars.forEach(carId => {
+                        const car = data[carId];
+                        const div = document.createElement('div');
+                        div.className = 'car-card';
+                        div.id = `card-${carId}`;
+                        div.innerHTML = `
+                            <div class="car-header">
+                                <span class="car-title">${carId}</span>
+                                <span class="status-badge" id="status-${carId}">${car.status}</span>
+                            </div>
+                            <div class="data-row">
+                                <span>Lat/Lon:</span>
+                                <span class="data-value" id="coords-${carId}">${car.lat.toFixed(4)}, ${car.lon.toFixed(4)}</span>
+                            </div>
+                            <select id="path-${carId}" class="form-control" style="margin-bottom: 0.5rem; padding: 0.5rem;">
+                                <option value="${car.path}">${car.path}</option>
+                                <option value="Path-A">Path-A</option>
+                                <option value="Path-B">Path-B</option>
+                                <option value="Path-Testing-Loop">Path-Testing-Loop</option>
+                                <option value="Path-Emergency">Path-Emergency</option>
+                                <option value="Path-Tihan-Perimeter">Path-Tihan-Perimeter</option>
+                            </select>
+                            <div class="controls">
+                                <button class="btn btn-start" onclick="controlCar('${carId}', 'start')">START</button>
+                                <button class="btn btn-stop" onclick="controlCar('${carId}', 'stop')">STOP</button>
+                            </div>
+                        `;
+                        container.appendChild(div);
+                    });
+                } else {
+                    // Hide stopped vehicles, show running vehicles
+                    Object.keys(data).forEach(carId => {
+                        const card = document.getElementById(`card-${carId}`);
+                        if (data[carId].status === 'Running') {
+                            if (!card) {
+                                // Create card for newly started vehicle
+                                const car = data[carId];
+                                const div = document.createElement('div');
+                                div.className = 'car-card';
+                                div.id = `card-${carId}`;
+                                div.innerHTML = `
+                                    <div class="car-header">
+                                        <span class="car-title">${carId}</span>
+                                        <span class="status-badge status-running" id="status-${carId}">${car.status}</span>
+                                    </div>
+                                    <div class="data-row">
+                                        <span>Lat/Lon:</span>
+                                        <span class="data-value" id="coords-${carId}">${car.lat.toFixed(4)}, ${car.lon.toFixed(4)}</span>
+                                    </div>
+                                    <select id="path-${carId}" class="form-control" style="margin-bottom: 0.5rem; padding: 0.5rem;">
+                                        <option value="${car.path}">${car.path}</option>
+                                        <option value="Path-A">Path-A</option>
+                                        <option value="Path-B">Path-B</option>
+                                        <option value="Path-Testing-Loop">Path-Testing-Loop</option>
+                                        <option value="Path-Emergency">Path-Emergency</option>
+                                        <option value="Path-Tihan-Perimeter">Path-Tihan-Perimeter</option>
+                                    </select>
+                                    <div class="controls">
+                                        <button class="btn btn-start" onclick="controlCar('${carId}', 'start')">START</button>
+                                        <button class="btn btn-stop" onclick="controlCar('${carId}', 'stop')">STOP</button>
+                                    </div>
+                                `;
+                                container.appendChild(div);
+                            }
+                        } else {
+                            // Remove stopped vehicle card
+                            if (card) {
+                                card.remove();
+                            }
+                        }
+                    });
+                    
+                    // Update existing running vehicle cards
+                    runningCars.forEach(carId => {
+                        const car = data[carId];
+                        const statusBadge = document.getElementById(`status-${carId}`);
+                        const coords = document.getElementById(`coords-${carId}`);
+                        if (statusBadge) {
+                            statusBadge.className = `status-badge ${car.status === 'Running' ? 'status-running' : 'status-stopped'}`;
+                            statusBadge.textContent = car.status;
+                        }
+                        if (coords) {
+                            coords.textContent = `${car.lat.toFixed(4)}, ${car.lon.toFixed(4)}`;
+                        }
+                    });
+                }
+            });
+    }
+
+    // Update every 300ms for smooth live tracking
+    setInterval(updateAdmin, 300);
+    updateAdmin();
+</script>
+{% endblock %}

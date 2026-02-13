@@ -1,0 +1,100 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="header">
+    <h1>Live Fleet Status</h1>
+    <p class="text-secondary">Real-time monitoring of active autonomous vehicles via Satellite Imagery</p>
+</div>
+
+<div id="map"></div>
+
+<div id="car-container" class="car-grid">
+    <!-- Detailed cards below map -->
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Initialize Map centered on TiHAN IITH with Satellite View
+    var map = L.map('map').setView([17.6018, 78.1268], 18);
+
+    // Satellite imagery from Esri World Imagery
+    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+        maxZoom: 19,
+        attribution: '© Esri, Maxar, Earthstar Geographics'
+    }).addTo(map);
+
+    var markers = {};
+
+    function updateCars() {
+        fetch('/api/data')
+            .then(response => response.json())
+            .then(data => {
+                const container = document.getElementById('car-container');
+                container.innerHTML = ''; // Clear current cards
+
+                // Show ONLY Running Vehicles on Map
+                Object.keys(data).forEach(carId => {
+                    const car = data[carId];
+
+                    if (car.status === 'Running') {
+                        if (markers[carId]) {
+                            markers[carId].setLatLng([car.lat, car.lon]);
+                            markers[carId].setPopupContent(`<b>${carId}</b><br>Status: ${car.status}<br>Path: ${car.path}`);
+                            if (!map.hasLayer(markers[carId])) {
+                                markers[carId].addTo(map);
+                            }
+                        } else {
+                            // Create marker for running vehicle
+                            markers[carId] = L.marker([car.lat, car.lon]).addTo(map)
+                                .bindPopup(`<b>${carId}</b><br>Status: ${car.status}<br>Path: ${car.path}`)
+                                .bindTooltip(carId, {
+                                    permanent: true,
+                                    direction: 'top',
+                                    className: 'transparent-label',
+                                    offset: [0, -30]
+                                });
+                        }
+                    } else {
+                        // Remove stopped vehicles from map
+                        if (markers[carId] && map.hasLayer(markers[carId])) {
+                            map.removeLayer(markers[carId]);
+                        }
+                    }
+                });
+
+                // Update Cards - Show ONLY Running Vehicles
+                const runningCars = Object.keys(data).filter(carId => data[carId].status === 'Running');
+                runningCars.forEach(carId => {
+                    const statusClass = car.status === 'Running' ? 'status-running' : 'status-stopped';
+                    const card = `
+                        <div class="car-card">
+                            <div class="car-header">
+                                <span class="car-title">${carId}</span>
+                                <span class="status-badge ${statusClass}">${car.status}</span>
+                            </div>
+                            <div class="data-row">
+                                <span>Latitude</span>
+                                <span class="data-value">${car.lat.toFixed(6)}</span>
+                            </div>
+                            <div class="data-row">
+                                <span>Longitude</span>
+                                <span class="data-value">${car.lon.toFixed(6)}</span>
+                            </div>
+                            <div class="data-row">
+                                <span>Active Path</span>
+                                <span class="data-value">${car.path}</span>
+                            </div>
+                        </div>
+                    `;
+                    container.innerHTML += card;
+                });
+            })
+            .catch(err => console.error('Error fetching data:', err));
+    }
+
+    // Update every 300ms for smooth live tracking
+    setInterval(updateCars, 300);
+    updateCars();
+</script>
+{% endblock %}
